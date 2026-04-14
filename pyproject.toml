@@ -1,0 +1,16 @@
+[project]
+name = "unnotech-homework"
+version = "0.1.0"
+description = "Unnotech Homework Project"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "channels>=4.3.2",
+    "channels-redis>=4.3.0",
+    "daphne>=4.2.1",
+    "django>=6.0.4",
+    "django-redis>=6.0.0",
+    "djangorestframework>=3.17.1",
+    "lxml>=6.0.4",
+    "requests>=2.33.1",
+]
