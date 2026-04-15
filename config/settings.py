@@ -106,6 +106,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': SQLITE_PATH,
+        # WAL 讓讀寫可並行（讀不被寫鎖阻塞），synchronous=NORMAL 在 WAL 下已足夠安全。
+        # cron 與 web container 共用同一個 db file，開 WAL 可避免 "database is locked"。
+        'OPTIONS': {
+            'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;',
+            'transaction_mode': 'IMMEDIATE',
+        },
     }
 }
 
