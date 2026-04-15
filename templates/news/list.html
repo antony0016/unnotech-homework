@@ -30,7 +30,7 @@
   const nextBtn = document.getElementById("next");
   const pageInfo = document.getElementById("page-info");
   const pageSizeEl = document.getElementById("page-size");
-  // const toast = document.getElementById("toast");
+  const toast = document.getElementById("toast");
 
   let currentPage = 1;
   let totalPages = 1;
@@ -99,15 +99,25 @@
     fetchList(1);
   };
 
-  // function showToast() {
-  //   toast.classList.add("show");
-  //   setTimeout(() => toast.classList.remove("show"), 2500);
-  // }
+  function showToast(msg) {
+    toast.textContent = msg || "有新新聞！";
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2500);
+  }
 
   fetchList(1);
 
-  // Phase 7 預留：WebSocket 監聽新新聞，收到後 refetch 當前頁
-  // const ws = new WebSocket(`ws://${location.host}/ws/news/`);
-  // ws.onmessage = (e) => { showToast(); fetchList(currentPage); };
+  // WebSocket：收到 news_created 事件時 refetch 當前頁
+  const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(`${wsProto}//${location.host}/ws/news/`);
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === "news_created") {
+        showToast(`有 ${msg.count} 則新新聞！`);
+        fetchList(currentPage);
+      }
+    } catch (_) {}
+  };
 </script>
 {% endblock %}
