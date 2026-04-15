@@ -38,6 +38,18 @@ CHANNEL_LAYERS = {
     },
 }
 
+# Redis 快取：與 Channel Layer 共用同一個 Redis instance，但用 DB index 1 隔離。
+CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL", REDIS_URL.rsplit("/", 1)[0] + "/1")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": CACHE_REDIS_URL,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        "KEY_PREFIX": "unnotech",
+    }
+}
+
 
 # Application definition
 

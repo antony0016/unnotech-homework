@@ -4,6 +4,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.core.management.base import BaseCommand
 
+from news.cache import invalidate_list_cache
 from news.consumers import NewsConsumer
 from news.scraper import UDNNBAScraper
 
@@ -33,6 +34,9 @@ class Command(BaseCommand):
         )
         for news in created:
             self.stdout.write(f"  [{news.id}] {news.title}")  # type: ignore[attr-defined]
+
+        deleted = invalidate_list_cache()
+        self.stdout.write(f"Invalidated {deleted} list cache entries")
 
         self._broadcast(len(created))
 
