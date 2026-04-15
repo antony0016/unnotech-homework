@@ -1,0 +1,11 @@
+# UDN NBA 焦點新聞爬蟲 crontab 範例
+#
+# 安裝方式（本機開發）：
+#   crontab -e
+# 然後複製以下其中一行，並替換專案路徑、uv 路徑
+#
+# 每 30 分鐘抓一次
+*/30 * * * * cd /ABSOLUTE/PATH/TO/unnotech-homework && /ABSOLUTE/PATH/TO/uv run python manage.py scrape_news >> /tmp/scrape_news.log 2>&1
+
+# Docker Compose 版本（給 supercronic 在 cron container 內使用，Phase 10）
+# */30 * * * * cd /app && uv run python manage.py scrape_news

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import random
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlsplit, urlunsplit
@@ -38,6 +40,8 @@ class UDNNBAScraper:
         ),
     }
     REQUEST_TIMEOUT = 15
+    # 詳情頁請求之間的隨機延遲區間（秒），用於避免被偵測為自動化爬蟲。
+    REQUEST_DELAY_RANGE = (1.0, 3.0)
 
     def __init__(self, session: requests.Session | None = None) -> None:
         """初始化爬蟲。
@@ -83,6 +87,13 @@ class UDNNBAScraper:
         if isinstance(value, list):
             value = value[0] if value else ""
         return str(value).strip()
+
+    def _sleep_jitter(self) -> None:
+        """隨機延遲一段時間，模擬人類瀏覽節奏以降低被反爬偵測的機率。"""
+        low, high = self.REQUEST_DELAY_RANGE
+        delay = random.uniform(low, high)
+        logger.debug("Sleeping %.2fs before next request", delay)
+        time.sleep(delay)
 
     @classmethod
     def _meta(cls, soup: BeautifulSoup, key: str) -> str:
@@ -177,9 +188,12 @@ class UDNNBAScraper:
         items = self.fetch_focus_list()
         logger.info("Fetched %d focus items", len(items))
 
-        for item in items:
+        for index, item in enumerate(items):
             if FocusNews.objects.filter(url=item.url).exists():
                 continue
+            # 第一篇不等，之後每篇詳情頁請求前都加隨機延遲
+            if index > 0:
+                self._sleep_jitter()
             try:
                 detail = self.fetch_detail(item.url)
             except requests.RequestException as exc:
