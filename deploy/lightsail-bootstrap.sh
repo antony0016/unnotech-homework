@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 在乾淨的 AWS Lightsail Ubuntu instance 上一步部署本專案。
+# 在乾淨的 AWS Lightsail Amazon Linux 2023 instance 上一步部署本專案。
 #
 # 用法（SSH 進 instance 後）：
 #   cd unnotech-homework
@@ -19,28 +19,37 @@ cd "$(dirname "$0")/.."
 PROJECT_DIR="$(pwd)"
 log "專案目錄：$PROJECT_DIR"
 
-# ---- 1. 安裝 Docker Engine + compose plugin ----
+# ---- 1. 安裝 Docker Engine ----
 if ! command -v docker >/dev/null 2>&1; then
-    log "安裝 Docker..."
-    apt-get update -y
-    apt-get install -y ca-certificates curl gnupg
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-        | gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
-    . /etc/os-release
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
-        > /etc/apt/sources.list.d/docker.list
-    apt-get update -y
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    log "安裝 Docker (dnf)..."
+    dnf install -y docker
     systemctl enable --now docker
 else
     log "Docker 已安裝，跳過"
 fi
 
-docker compose version >/dev/null 2>&1 || die "docker compose plugin 未安裝"
+# ---- 2. 安裝 docker compose plugin ----
+# Amazon Linux 2023 官方 repo 沒有 docker-compose-plugin，手動下載 binary 當 CLI plugin。
+COMPOSE_PLUGIN_DIR="/usr/libexec/docker/cli-plugins"
+COMPOSE_BIN="$COMPOSE_PLUGIN_DIR/docker-compose"
+if ! docker compose version >/dev/null 2>&1; then
+    log "安裝 docker compose plugin..."
+    COMPOSE_VERSION="${COMPOSE_VERSION:-v2.29.7}"
+    ARCH="$(uname -m)"
+    mkdir -p "$COMPOSE_PLUGIN_DIR"
+    curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" \
+        -o "$COMPOSE_BIN"
+    chmod +x "$COMPOSE_BIN"
+fi
+docker compose version >/dev/null 2>&1 || die "docker compose plugin 安裝失敗"
 
-# ---- 2. 產生 .env ----
+# 讓當前 user 免 sudo 用 docker（需 re-login 生效）
+if [ -n "${SUDO_USER:-}" ] && ! id -nG "$SUDO_USER" | tr ' ' '\n' | grep -qx docker; then
+    usermod -aG docker "$SUDO_USER"
+    log "已將 $SUDO_USER 加入 docker group（下次登入生效）"
+fi
+
+# ---- 3. 產生 .env ----
 if [ ! -f .env ]; then
     log "建立 .env..."
     SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))' 2>/dev/null \
@@ -64,7 +73,7 @@ else
     log ".env 已存在，保留不覆寫"
 fi
 
-# ---- 3. build + up ----
+# ---- 4. build + up ----
 log "docker compose up -d --build..."
 docker compose up -d --build
 
