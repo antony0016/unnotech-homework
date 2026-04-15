@@ -4,15 +4,17 @@ services:
     restart: unless-stopped
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+    # 部署到 VPS 時不暴露 redis port，避免公開 Redis 被掃描
+    expose:
+      - "6379"
 
   web:
     build: .
     restart: unless-stopped
     environment:
-      - DJANGO_DEBUG=1
-      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,web
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-dev-only-change-me}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-1}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0,web}
       - REDIS_URL=redis://redis:6379/0
       - SQLITE_PATH=/app/data/db.sqlite3
     depends_on:
@@ -21,13 +23,14 @@ services:
       - sqlite_data:/app/data
       - ./:/app
     ports:
-      - "8000:8000"
+      - "${WEB_PORT:-8000}:8000"
 
   cron:
     build: .
     restart: unless-stopped
     environment:
-      - DJANGO_DEBUG=0
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-dev-only-change-me}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-0}
       - DJANGO_ALLOWED_HOSTS=localhost
       - REDIS_URL=redis://redis:6379/0
       - SQLITE_PATH=/app/data/db.sqlite3
