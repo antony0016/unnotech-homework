@@ -1,0 +1,3 @@
+# supercronic crontab（給 docker-compose cron container 使用）
+# 每 30 分鐘抓一次 UDN NBA 焦點新聞
+*/30 * * * * cd /app && python manage.py scrape_news

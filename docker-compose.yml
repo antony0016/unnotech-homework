@@ -1,0 +1,48 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DJANGO_DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,web
+      - REDIS_URL=redis://redis:6379/0
+      - SQLITE_PATH=/app/data/db.sqlite3
+    depends_on:
+      - redis
+    volumes:
+      - sqlite_data:/app/data
+      - ./:/app
+    ports:
+      - "8000:8000"
+
+  cron:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DJANGO_DEBUG=0
+      - DJANGO_ALLOWED_HOSTS=localhost
+      - REDIS_URL=redis://redis:6379/0
+      - SQLITE_PATH=/app/data/db.sqlite3
+    depends_on:
+      - redis
+      - web
+    volumes:
+      - sqlite_data:/app/data
+      - ./:/app
+    # 覆蓋掉了 image 中的 CMD, 不會多起一個 web server 造成浪費資源, 只會執行定時任務
+    command:
+      - sh
+      - -c
+      - "python manage.py scrape_news && exec supercronic /app/deploy/crontab"
+
+volumes:
+  redis_data:
+  sqlite_data:
