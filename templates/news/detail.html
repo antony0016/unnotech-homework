@@ -1,0 +1,47 @@
+{% extends "news/base.html" %}
+
+{% block content %}
+<p><a href="/">← 返回列表</a></p>
+<div id="detail" class="status">載入中…</div>
+
+<script>
+  const newsId = {{ news_id }}; // 從 Django 後端傳入的新聞 ID, ignore error
+  const detailEl = document.getElementById("detail");
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "";
+    return new Date(iso).toLocaleString("zh-TW", { hour12: false });
+  }
+
+  async function load() {
+    try {
+      const res = await fetch(`/api/news/${newsId}/`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      detailEl.className = "";
+      detailEl.innerHTML = `
+        <h1>${escapeHtml(d.title)}</h1>
+        <div class="detail-meta">
+          ${escapeHtml(d.author || "")} · ${fmtDate(d.published_at)}
+          · <a href="${d.url}" target="_blank" rel="noopener">原始連結</a>
+        </div>
+        <img class="detail-img" src="${d.image_url}" alt="">
+        <p class="caption" style="color:#666;font-size:14px;margin-top:8px;">
+          ${escapeHtml(d.image_caption || "")}
+        </p>
+        <div class="detail-content">${escapeHtml(d.content || "")}</div>
+      `;
+    } catch (err) {
+      detailEl.textContent = `載入失敗：${err.message}`;
+    }
+  }
+
+  load();
+</script>
+{% endblock %}

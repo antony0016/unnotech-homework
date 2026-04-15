@@ -1,0 +1,113 @@
+{% extends "news/base.html" %}
+
+{% block content %}
+<h1>UDN NBA 焦點新聞</h1>
+<p class="detail-meta">
+  輪播焦點新聞列表
+  &nbsp;·&nbsp;
+  每頁
+  <select id="page-size">
+    <option value="5" selected>5</option>
+    <option value="10">10</option>
+    <option value="20">20</option>
+  </select>
+  筆
+</p>
+
+<div id="list" class="status">載入中…</div>
+
+<div class="pagination">
+  <button type="button" id="prev">上一頁</button>
+  <span id="page-info" style="align-self: center;"></span>
+  <button type="button" id="next">下一頁</button>
+</div>
+
+<div id="toast" class="toast">有新新聞！</div>
+
+<script>
+  const listEl = document.getElementById("list");
+  const prevBtn = document.getElementById("prev");
+  const nextBtn = document.getElementById("next");
+  const pageInfo = document.getElementById("page-info");
+  const pageSizeEl = document.getElementById("page-size");
+  // const toast = document.getElementById("toast");
+
+  let currentPage = 1;
+  let totalPages = 1;
+  let pageSize = parseInt(pageSizeEl.value, 10);
+
+  function fmtDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleString("zh-TW", { hour12: false });
+  }
+
+  async function fetchList(page) {
+    listEl.className = "status";
+    listEl.textContent = "載入中…";
+    try {
+      const res = await fetch(`/api/news/?page=${page}&page_size=${pageSize}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      renderList(data, page);
+    } catch (err) {
+      listEl.textContent = `載入失敗：${err.message}`;
+    }
+  }
+
+  function renderList(data, page) {
+    currentPage = page;
+    totalPages = Math.max(1, Math.ceil(data.count / pageSize));
+    listEl.className = "";
+    listEl.innerHTML = "";
+
+    if (data.results.length === 0) {
+      listEl.className = "status";
+      listEl.textContent = "沒有新聞";
+    }
+
+    data.results.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "news-card";
+      card.onclick = () => { location.href = `/news/${item.id}/`; };
+      card.innerHTML = `
+        <img src="${item.image_url}" alt="">
+        <div>
+          <div><strong>${escapeHtml(item.title)}</strong></div>
+          <div class="caption">${escapeHtml(item.image_caption || "")}</div>
+          <div class="meta">${escapeHtml(item.author || "")} · ${fmtDate(item.published_at)}</div>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+
+    pageInfo.textContent = `第 ${currentPage} / ${totalPages} 頁（共 ${data.count} 筆）`;
+    prevBtn.disabled = !data.previous;
+    nextBtn.disabled = !data.next;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  prevBtn.onclick = () => fetchList(currentPage - 1);
+  nextBtn.onclick = () => fetchList(currentPage + 1);
+  pageSizeEl.onchange = () => {
+    pageSize = parseInt(pageSizeEl.value, 10);
+    fetchList(1);
+  };
+
+  // function showToast() {
+  //   toast.classList.add("show");
+  //   setTimeout(() => toast.classList.remove("show"), 2500);
+  // }
+
+  fetchList(1);
+
+  // Phase 7 預留：WebSocket 監聽新新聞，收到後 refetch 當前頁
+  // const ws = new WebSocket(`ws://${location.host}/ws/news/`);
+  // ws.onmessage = (e) => { showToast(); fetchList(currentPage); };
+</script>
+{% endblock %}
